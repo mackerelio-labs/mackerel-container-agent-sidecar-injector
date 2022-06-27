@@ -1,0 +1,6 @@
+domain: mackerel.io
+layout:
+- go.kubebuilder.io/v3
+projectName: mackerel-container-agent-sidecar-injector
+repo: github.com/mackerelio-labs/mackerel-container-agent-sidecar-injector
+version: "3"
