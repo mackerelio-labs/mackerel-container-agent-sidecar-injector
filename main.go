@@ -76,7 +76,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&v1.PodWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&v1.PodWebhook{
+		AgentKubeletInsecureTLS: true,
+	}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Pod")
 		os.Exit(1)
 	}
