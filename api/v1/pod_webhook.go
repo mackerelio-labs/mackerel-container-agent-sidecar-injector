@@ -33,6 +33,7 @@ var podlog = logf.Log.WithName("pod-resource")
 // SetupWebhookWithManager is ...
 func (r *PodWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
+		WithDefaulter(r).
 		For(&corev1.Pod{}).
 		Complete()
 }
