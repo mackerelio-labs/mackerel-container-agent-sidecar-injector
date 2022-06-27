@@ -18,8 +18,13 @@ package v1
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -27,8 +32,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+var ignoredNamespaces = []string{
+	metav1.NamespaceSystem,
+	metav1.NamespacePublic,
+}
+
 // log is for logging in this package.
 var podlog = logf.Log.WithName("pod-resource")
+
+const admissionServiceAccountDefaultAPITokenMountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
+const (
+	admissionWebhookAnnotationInjectKey = "agent-injector.contrib.mackerel.io/inject"
+	admissionWebhookAnnotationStatusKey = "agent-injector.contrib.mackerel.io/status"
+	annotationRolesKey                  = "agent-injector.contrib.mackerel.io/roles"
+	annotationsBasePath                 = "/metadata/annotations"
+)
 
 // SetupWebhookWithManager is ...
 func (r *PodWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -43,7 +61,11 @@ func (r *PodWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 //+kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups=core,resources=pods,verbs=create;update,versions=v1,name=mutate.pod.mackerel.io,admissionReviewVersions=v1
 
 // PodWebhook represents ...
-type PodWebhook struct{}
+type PodWebhook struct {
+	AgentAPIKey             string
+	AgentKubeletPort        int
+	AgentKubeletInsecureTLS bool
+}
 
 var _ admission.CustomDefaulter = &PodWebhook{}
 
@@ -51,7 +73,144 @@ var _ admission.CustomDefaulter = &PodWebhook{}
 func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	podlog.Info("execute pod webhook")
 
-	// TODO(user): fill in your defaulting logic.
+	var pod *corev1.Pod
+	var ok bool
+	if pod, ok = obj.(*corev1.Pod); !ok {
+		podlog.Info("cast failed.")
+		return errors.New("invalid type")
+	}
+	if !mutationRequired(&pod.ObjectMeta) {
+		return nil
+	}
 
+	r.mutatePod(pod)
 	return nil
+}
+
+func mutationRequired(metadata *metav1.ObjectMeta) bool {
+	for _, namespace := range ignoredNamespaces {
+		if metadata.Namespace == namespace {
+			return false
+		}
+	}
+
+	annotations := metadata.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+
+	status := annotations[admissionWebhookAnnotationStatusKey]
+
+	var required bool
+	if strings.ToLower(status) == "injected" {
+		required = false
+	} else {
+		switch strings.ToLower(annotations[admissionWebhookAnnotationInjectKey]) {
+		default:
+			required = false
+		case "true":
+			required = true
+		}
+	}
+
+	podlog.Info("mutationRequired=%v", required)
+
+	return required
+}
+
+func (r *PodWebhook) mutatePod(pod *corev1.Pod) {
+	pod.Spec.Containers = append(pod.Spec.Containers, r.generateInjectedContainer(pod))
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[admissionWebhookAnnotationStatusKey] = "injected"
+}
+
+func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container {
+	env := []corev1.EnvVar{
+		{
+			Name:  "MACKEREL_CONTAINER_PLATFORM",
+			Value: "kubernetes",
+		},
+		{
+			Name: "MACKEREL_KUBERNETES_KUBELET_HOST",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.hostIP",
+				},
+			},
+		},
+		{
+			Name: "MACKEREL_KUBERNETES_NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name: "MACKEREL_KUBERNETES_POD_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.name",
+				},
+			},
+		},
+	}
+
+	if r.AgentAPIKey != "" {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_APIKEY",
+			Value: r.AgentAPIKey,
+		})
+	}
+
+	if r.AgentKubeletPort != -1 {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_KUBERNETES_KUBELET_PORT",
+			Value: fmt.Sprint(r.AgentKubeletPort),
+		})
+	}
+
+	if r.AgentKubeletInsecureTLS {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_KUBERNETES_KUBELET_INSECURE_TLS",
+			Value: "true",
+		})
+	}
+
+	if roles, ok := pod.Annotations[annotationRolesKey]; ok {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_ROLES",
+			Value: roles,
+		})
+	}
+
+	agentContainer := corev1.Container{
+		Name:            "mackerel-container-agent",
+		Image:           "mackerel/mackerel-container-agent:latest",
+		ImagePullPolicy: corev1.PullAlways,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+			},
+		},
+		Env: env,
+	}
+
+	// Find volumeMount injected by ServiceAccount Admission Plugin
+	// https://github.com/kubernetes/kubernetes/blob/56b40066d5/plugin/pkg/admission/serviceaccount/admission.go#L473-502
+containers:
+	for _, c := range pod.Spec.Containers {
+		for _, v := range c.VolumeMounts {
+			podlog.Info("Seen volumeMount: %v", v)
+
+			if v.MountPath == admissionServiceAccountDefaultAPITokenMountPath {
+				agentContainer.VolumeMounts = []corev1.VolumeMount{v}
+				break containers
+			}
+		}
+	}
+
+	return agentContainer
 }
