@@ -50,17 +50,16 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var agentAPIKey string
-	var agentKubeletPort int
-	var agentKubeletInsecureTLS bool
+
+	podWebHook := &v1.PodWebhook{}
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&agentAPIKey, "agentAPIKey", "", "Mackerel API Key for the injected agent")
-	flag.IntVar(&agentKubeletPort, "agentKubeletPort", -1, "Kubelet port")
-	flag.BoolVar(&agentKubeletInsecureTLS, "agentKubeletInsecureTLS", true, "Skip verifying Kubelet host")
+	flag.StringVar(&podWebHook.AgentAPIKey, "agentAPIKey", "", "Mackerel API Key for the injected agent")
+	flag.IntVar(&podWebHook.AgentKubeletPort, "agentKubeletPort", -1, "Kubelet port")
+	flag.BoolVar(&podWebHook.AgentKubeletInsecureTLS, "agentKubeletInsecureTLS", true, "Skip verifying Kubelet host")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -82,11 +81,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&v1.PodWebhook{
-		AgentKubeletInsecureTLS: agentKubeletInsecureTLS,
-		AgentKubeletPort:        agentKubeletPort,
-		AgentAPIKey:             agentAPIKey,
-	}).SetupWebhookWithManager(mgr); err != nil {
+	if err = podWebHook.SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Pod")
 		os.Exit(1)
 	}
