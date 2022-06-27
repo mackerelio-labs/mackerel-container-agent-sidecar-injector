@@ -62,9 +62,10 @@ func (r *PodWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // PodWebhook represents ...
 type PodWebhook struct {
-	AgentAPIKey             string
-	AgentKubeletPort        int
-	AgentKubeletInsecureTLS bool
+	AgentAPIKey              string
+	AgentKubeletPort         int
+	AgentKubeletReadOnlyPort int
+	AgentKubeletInsecureTLS  bool
 }
 
 var _ admission.CustomDefaulter = &PodWebhook{}
@@ -156,6 +157,10 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container
 				},
 			},
 		},
+		{
+			Name:  "MACKEREL_KUBERNETES_KUBELET_READ_ONLY_PORT",
+			Value: "-1",
+		},
 	}
 
 	if r.AgentAPIKey != "" {
@@ -176,6 +181,13 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container
 		env = append(env, corev1.EnvVar{
 			Name:  "MACKEREL_KUBERNETES_KUBELET_INSECURE_TLS",
 			Value: "true",
+		})
+	}
+
+	if r.AgentKubeletReadOnlyPort != -1 {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_KUBERNETES_KUBELET_READ_ONLY_PORT",
+			Value: fmt.Sprint(r.AgentKubeletReadOnlyPort),
 		})
 	}
 
