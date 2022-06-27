@@ -113,7 +113,7 @@ func mutationRequired(metadata *metav1.ObjectMeta) bool {
 		}
 	}
 
-	podlog.Info("mutationRequired=%v", required)
+	// podlog.Info("mutated", "mutationRequired", required)
 
 	return required
 }
@@ -203,7 +203,7 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container
 containers:
 	for _, c := range pod.Spec.Containers {
 		for _, v := range c.VolumeMounts {
-			podlog.Info("Seen volumeMount: %v", v)
+			// podlog.Info("volumeMounted", "volume", v)
 
 			if v.MountPath == admissionServiceAccountDefaultAPITokenMountPath {
 				agentContainer.VolumeMounts = []corev1.VolumeMount{v}
