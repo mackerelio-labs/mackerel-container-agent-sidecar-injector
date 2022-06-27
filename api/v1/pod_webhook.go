@@ -17,17 +17,23 @@ limitations under the License.
 package v1
 
 import (
+	"context"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
 var podlog = logf.Log.WithName("pod-resource")
 
-func (r *Pod) SetupWebhookWithManager(mgr ctrl.Manager) error {
+// SetupWebhookWithManager is ...
+func (r *PodWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&corev1.Pod{}).
 		Complete()
 }
 
@@ -35,11 +41,16 @@ func (r *Pod) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 //+kubebuilder:webhook:path=/mutate-core-v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups=core,resources=pods,verbs=create;update,versions=v1,name=mpod.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Pod{}
+// PodWebhook represents ...
+type PodWebhook struct{}
+
+var _ admission.CustomDefaulter = &PodWebhook{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *Pod) Default() {
-	podlog.Info("default", "name", r.Name)
+func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
+	podlog.Info("execute pod webhook")
 
 	// TODO(user): fill in your defaulting logic.
+
+	return nil
 }

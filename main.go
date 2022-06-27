@@ -22,6 +22,8 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+
+	v1 "github.com/mackerelio-labs/mackerel-container-agent-sidecar-injector/api/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +76,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&corev1.Pod{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&v1.PodWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Pod")
 		os.Exit(1)
 	}
