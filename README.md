@@ -68,7 +68,7 @@ subjects:
   namespace: default
 ```
 
-create pod with annotation(`agent-injector.contrib.mackerel.io/inject: true`) and `ServiceAccount`(default-with-mackerel-agent) created above.
+create pod with annotation(`agent-injector.contrib.mackerel.io/inject: true`, `agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name: "mysecret"`) and `ServiceAccount`(default-with-mackerel-agent) created above.
 
 ```yaml
 ---
@@ -84,6 +84,8 @@ spec:
     metadata:
       annotations:
         agent-injector.contrib.mackerel.io/inject: "true"
+        agent-injector.contrib.mackerel.io/roles: "mackerel:example-app"
+        agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name: "mysecret"
       labels:
         app: mackerel-example-app
     spec:
@@ -92,4 +94,11 @@ spec:
         - name: sleep
           image: buildpack-deps:curl
           command: [ "sh", "-c", "while :; do sleep 100; done" ]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+data:
+  MACKEREL_APIKEY: NnhiYVVMcGI0cEFubmV4eGkyY2l5TmRMdGRHdDZrcFVUTkRmdFRYUFlhYWE=
 ```
