@@ -34,20 +34,6 @@ create ServiceAccount for mackerel-container-agent.
 
 ```yaml
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: mackerel-container-agent-clusterrole
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes/proxy
-  - nodes/stats
-  - nodes/spec
-  verbs:
-  - get
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
