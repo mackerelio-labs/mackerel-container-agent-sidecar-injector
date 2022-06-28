@@ -101,7 +101,7 @@ helm-deploy: helm-template
 	helm upgrade --install mackerel-container-agent-sidecar-injector ./chart/
 
 .PHONY: helm-template
-helm-template:
+helm-template: kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > chart/templates/all.yaml
 
