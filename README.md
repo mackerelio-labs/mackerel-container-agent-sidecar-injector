@@ -86,5 +86,5 @@ kind: Secret
 metadata:
   name: mysecret
 data:
-  MACKEREL_APIKEY: NnhiYVVMcGI0cEFubmV4eGkyY2l5TmRMdGRHdDZrcFVUTkRmdFRYUFlhYWE=
+  MACKEREL_APIKEY: BASE64_DECODED_YOUR_MACKEREL_APIKEY
 ```
