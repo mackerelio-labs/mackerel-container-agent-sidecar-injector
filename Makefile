@@ -102,6 +102,7 @@ helm-deploy: helm-template
 
 .PHONY: helm-template
 helm-template:
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > chart/templates/all.yaml
 
 
