@@ -5,14 +5,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  kustomize:
-    name: 'Kustomize'
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout'
         uses: actions/checkout@master
       - name: 'Test'
         run: make test
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@master
       - name: 'Build'
         run: make docker-build
       - name: 'Build HelmTemplate'
