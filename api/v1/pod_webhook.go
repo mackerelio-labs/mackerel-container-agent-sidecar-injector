@@ -45,7 +45,9 @@ const (
 	admissionWebhookAnnotationInjectKey = "agent-injector.contrib.mackerel.io/inject"
 	admissionWebhookAnnotationStatusKey = "agent-injector.contrib.mackerel.io/status"
 	annotationRolesKey                  = "agent-injector.contrib.mackerel.io/roles"
+	annotationMackerelAPISecretName     = "agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name"
 	annotationsBasePath                 = "/metadata/annotations"
+	envMackerelAPIKey                   = "MACKEREL_APIKEY"
 )
 
 // SetupWebhookWithManager is ...
@@ -76,14 +78,21 @@ func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	var pod *corev1.Pod
 	var ok bool
 	if pod, ok = obj.(*corev1.Pod); !ok {
-		podlog.Info("cast failed.")
-		return errors.New("invalid type")
+		err := errors.New("invalid type")
+		handleError(err)
+		return err
 	}
+
 	if !mutationRequired(&pod.ObjectMeta) {
+		podlog.Info("no mutate needed", "name", pod.Name)
 		return nil
 	}
 
-	r.mutatePod(pod)
+	err := r.mutatePod(pod)
+	if err != nil {
+		handleError(err)
+	}
+
 	return nil
 }
 
@@ -118,15 +127,22 @@ func mutationRequired(metadata *metav1.ObjectMeta) bool {
 	return required
 }
 
-func (r *PodWebhook) mutatePod(pod *corev1.Pod) {
-	pod.Spec.Containers = append(pod.Spec.Containers, r.generateInjectedContainer(pod))
+func (r *PodWebhook) mutatePod(pod *corev1.Pod) error {
+	container, err := r.generateInjectedContainer(pod)
+	if err != nil {
+		return err
+	}
+
+	pod.Spec.Containers = append(pod.Spec.Containers, *container)
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 	pod.Annotations[admissionWebhookAnnotationStatusKey] = "injected"
+
+	return nil
 }
 
-func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container {
+func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) (*corev1.Container, error) {
 	env := []corev1.EnvVar{
 		{
 			Name:  "MACKEREL_CONTAINER_PLATFORM",
@@ -162,9 +178,26 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container
 		},
 	}
 
-	if r.AgentAPIKey != "" {
+	if name, ok := pod.Annotations[annotationMackerelAPISecretName]; ok && name != "" {
 		env = append(env, corev1.EnvVar{
-			Name:  "MACKEREL_APIKEY",
+			Name: envMackerelAPIKey,
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: name,
+					},
+					Key: envMackerelAPIKey,
+				},
+			},
+		})
+	} else {
+		if r.AgentAPIKey == "" {
+			return nil, fmt.Errorf("%s is not specified", envMackerelAPIKey)
+		}
+
+		// set MACKEREL_APIKEY via args
+		env = append(env, corev1.EnvVar{
+			Name:  envMackerelAPIKey,
 			Value: r.AgentAPIKey,
 		})
 	}
@@ -190,7 +223,7 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) corev1.Container
 		})
 	}
 
-	agentContainer := corev1.Container{
+	agentContainer := &corev1.Container{
 		Name:            "mackerel-container-agent",
 		Image:           "mackerel/mackerel-container-agent:latest",
 		ImagePullPolicy: corev1.PullAlways,
@@ -216,5 +249,9 @@ containers:
 		}
 	}
 
-	return agentContainer
+	return agentContainer, nil
+}
+
+func handleError(err error) {
+	podlog.Error(err, "failed to inject")
 }
