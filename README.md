@@ -1,5 +1,7 @@
 # mackerel-container-agent-sidecar-injector
 
+[![exectute test](https://github.com/mackerelio-labs/mackerel-container-agent-sidecar-injector/actions/workflows/ci.yaml/badge.svg)](https://github.com/mackerelio-labs/mackerel-container-agent-sidecar-injector/actions/workflows/ci.yaml)
+
 `mackerel-container-agent Sidecar Injector` allows to dynamically inject [mackerel-container-agent](https://github.com/mackerelio/mackerel-container-agent) as a sidecar container.
 
 ## Usage
