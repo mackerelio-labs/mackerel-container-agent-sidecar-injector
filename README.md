@@ -68,7 +68,6 @@ subjects:
   namespace: default
 ```
 
-
 create pod with annotation(`agent-injector.contrib.mackerel.io/inject: true`) and `ServiceAccount`(default-with-mackerel-agent) created above.
 
 ```yaml
