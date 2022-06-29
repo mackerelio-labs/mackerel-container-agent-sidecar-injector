@@ -60,6 +60,7 @@ create pod with annotation(`agent-injector.contrib.mackerel.io/inject: true`, `a
 
 ```yaml
 ---
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -73,20 +74,56 @@ spec:
       annotations:
         agent-injector.contrib.mackerel.io/inject: "true"
         agent-injector.contrib.mackerel.io/roles: "mackerel:example-app"
-        agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name: "mysecret"
+        agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name: "mackerel-api-key"
+        agent-injector.contrib.mackerel.io/mackere_agent_config.configmap_name: "mackerel-agent-config"
       labels:
         app: mackerel-example-app
     spec:
       serviceAccountName: default-with-mackerel-agent
       containers:
-        - name: sleep
-          image: buildpack-deps:curl
-          command: [ "sh", "-c", "while :; do sleep 100; done" ]
+        - name: nginx
+          image: nginx:latest
+          volumeMounts:
+            - name: nginx-status-config
+              mountPath: /etc/nginx/conf.d/nginx-status.conf
+              subPath: nginx-status.conf
+      volumes:
+        - name: nginx-status-config
+          configMap:
+            name: nginx-status-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-status-config
+data:
+  nginx-status.conf: |
+    server{
+        listen 8080;
+        server_name localhost;
+        location /nginx_status {
+            stub_status on;
+            access_log off;
+            allow 127.0.0.1;
+            deny all;
+        }
+    }
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: mysecret
+  name: mackerel-api-key
 data:
   MACKEREL_APIKEY: BASE64_DECODED_YOUR_MACKEREL_APIKEY
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mackerel-agent-config
+data:
+  mackerel-agent.conf: |
+    plugin:
+      metrics:
+        nginx:
+          command: "/usr/bin/mackerel-plugin-nginx"
 ```
