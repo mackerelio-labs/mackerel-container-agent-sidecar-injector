@@ -254,7 +254,7 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) (*corev1.Contain
 
 	agentContainer := &corev1.Container{
 		Name:            "mackerel-container-agent",
-		Image:           "mackerel/mackerel-container-agent:latest",
+		Image:           "mackerel/mackerel-container-agent:plugins",
 		ImagePullPolicy: corev1.PullAlways,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{
