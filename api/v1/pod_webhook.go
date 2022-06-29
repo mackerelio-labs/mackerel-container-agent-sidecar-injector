@@ -42,12 +42,16 @@ var podlog = logf.Log.WithName("pod-resource")
 
 const admissionServiceAccountDefaultAPITokenMountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
 const (
-	admissionWebhookAnnotationInjectKey = "agent-injector.contrib.mackerel.io/inject"
-	admissionWebhookAnnotationStatusKey = "agent-injector.contrib.mackerel.io/status"
-	annotationRolesKey                  = "agent-injector.contrib.mackerel.io/roles"
-	annotationMackerelAPISecretName     = "agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name"
-	annotationsBasePath                 = "/metadata/annotations"
-	envMackerelAPIKey                   = "MACKEREL_APIKEY"
+	admissionWebhookAnnotationInjectKey        = "agent-injector.contrib.mackerel.io/inject"
+	admissionWebhookAnnotationStatusKey        = "agent-injector.contrib.mackerel.io/status"
+	annotationRolesKey                         = "agent-injector.contrib.mackerel.io/roles"
+	annotationMackerelAPISecretName            = "agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name"
+	annotationMackerelAgentConfigConfigMapName = "agent-injector.contrib.mackerel.io/mackere_agent_config.configmap_name"
+	annotationEnvMackerelAgentConfig           = "agent-injector.contrib.mackerel.io/env.mackere_agent_config"
+	annotationsBasePath                        = "/metadata/annotations"
+	envMackerelAPIKey                          = "MACKEREL_APIKEY"
+	mackerelAgentConfigVolumeName              = "mackerel-agent-config-volume"
+	mackerelAgentConfigMountPath               = "/etc/mackerel-agent/mackerel-agent.conf"
 )
 
 // SetupWebhookWithManager is ...
@@ -128,9 +132,27 @@ func mutationRequired(metadata *metav1.ObjectMeta) bool {
 }
 
 func (r *PodWebhook) mutatePod(pod *corev1.Pod) error {
+	var configVolume *corev1.Volume
+	if name, ok := pod.Annotations[annotationMackerelAgentConfigConfigMapName]; ok && name != "" {
+		configVolume = createMackerelAgentConfigVolume(name)
+		pod.Spec.Volumes = append(pod.Spec.Volumes, *configVolume)
+
+		if path, ok := pod.Annotations[annotationEnvMackerelAgentConfig]; !ok || path == "" {
+			pod.Annotations[annotationEnvMackerelAgentConfig] = mackerelAgentConfigMountPath
+		}
+	}
+
 	container, err := r.generateInjectedContainer(pod)
 	if err != nil {
 		return err
+	}
+
+	if configVolume != nil {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      configVolume.Name,
+			MountPath: mackerelAgentConfigMountPath,
+			SubPath:   "mackerel-agent.conf",
+		})
 	}
 
 	pod.Spec.Containers = append(pod.Spec.Containers, *container)
@@ -223,6 +245,13 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) (*corev1.Contain
 		})
 	}
 
+	if conf, ok := pod.Annotations[annotationEnvMackerelAgentConfig]; ok {
+		env = append(env, corev1.EnvVar{
+			Name:  "MACKEREL_AGENT_CONFIG",
+			Value: conf,
+		})
+	}
+
 	agentContainer := &corev1.Container{
 		Name:            "mackerel-container-agent",
 		Image:           "mackerel/mackerel-container-agent:latest",
@@ -250,6 +279,19 @@ containers:
 	}
 
 	return agentContainer, nil
+}
+
+func createMackerelAgentConfigVolume(configMapName string) *corev1.Volume {
+	return &corev1.Volume{
+		Name: mackerelAgentConfigVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configMapName,
+				},
+			},
+		},
+	}
 }
 
 func handleError(err error) {
