@@ -49,7 +49,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: mackerel-sidecar-injector-container-agent-clusterrole 
+  name: mackerel-sidecar-injector-container-agent-clusterrole
 subjects:
 - kind: ServiceAccount
   name: default-with-mackerel-agent
