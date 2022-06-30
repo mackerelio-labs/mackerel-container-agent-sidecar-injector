@@ -75,7 +75,7 @@ spec:
         agent-injector.contrib.mackerel.io/inject: "true"
         agent-injector.contrib.mackerel.io/roles: "mackerel:example-app"
         agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name: "mackerel-api-key"
-        agent-injector.contrib.mackerel.io/mackere_agent_config.configmap_name: "mackerel-agent-config"
+        agent-injector.contrib.mackerel.io/mackerel_agent_config.configmap_name: "mackerel-agent-config"
       labels:
         app: mackerel-example-app
     spec:
