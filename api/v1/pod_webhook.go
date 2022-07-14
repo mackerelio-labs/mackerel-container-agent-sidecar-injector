@@ -79,9 +79,8 @@ var _ admission.CustomDefaulter = &PodWebhook{}
 func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	podlog.Info("execute pod webhook")
 
-	var pod *corev1.Pod
-	var ok bool
-	if pod, ok = obj.(*corev1.Pod); !ok {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
 		err := errors.New("invalid type")
 		handleError(err)
 		return err
