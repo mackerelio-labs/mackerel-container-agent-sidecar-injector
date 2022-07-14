@@ -42,16 +42,16 @@ var podlog = logf.Log.WithName("pod-resource")
 
 const admissionServiceAccountDefaultAPITokenMountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
 const (
-	admissionWebhookAnnotationInjectKey        = "agent-injector.contrib.mackerel.io/inject"
-	admissionWebhookAnnotationStatusKey        = "agent-injector.contrib.mackerel.io/status"
-	annotationRolesKey                         = "agent-injector.contrib.mackerel.io/roles"
-	annotationMackerelAPISecretName            = "agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name"
-	annotationMackerelAgentConfigConfigMapName = "agent-injector.contrib.mackerel.io/mackerel_agent_config.configmap_name"
-	annotationEnvMackerelAgentConfig           = "agent-injector.contrib.mackerel.io/env.mackerel_agent_config"
-	annotationsBasePath                        = "/metadata/annotations"
-	envMackerelAPIKey                          = "MACKEREL_APIKEY"
-	mackerelAgentConfigVolumeName              = "mackerel-agent-config-volume"
-	mackerelAgentConfigMountPath               = "/etc/mackerel-agent/mackerel-agent.conf"
+	admissionWebhookAnnotationInjectKey           = "agent-injector.contrib.mackerel.io/inject"
+	admissionWebhookAnnotationStatusKey           = "agent-injector.contrib.mackerel.io/status"
+	annotationRolesKey                            = "agent-injector.contrib.mackerel.io/roles"
+	annotationMackerelAPISecretNameKey            = "agent-injector.contrib.mackerel.io/mackerel_apikey.secret_name"
+	annotationMackerelAgentConfigConfigMapNameKey = "agent-injector.contrib.mackerel.io/mackerel_agent_config.configmap_name"
+	annotationEnvMackerelAgentConfigKey           = "agent-injector.contrib.mackerel.io/env.mackerel_agent_config"
+	annotationsBasePathKey                        = "/metadata/annotations"
+	envMackerelAPIKey                             = "MACKEREL_APIKEY"
+	mackerelAgentConfigVolumeName                 = "mackerel-agent-config-volume"
+	mackerelAgentConfigMountPath                  = "/etc/mackerel-agent/mackerel-agent.conf"
 )
 
 // SetupWebhookWithManager is ...
@@ -79,9 +79,8 @@ var _ admission.CustomDefaulter = &PodWebhook{}
 func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	podlog.Info("execute pod webhook")
 
-	var pod *corev1.Pod
-	var ok bool
-	if pod, ok = obj.(*corev1.Pod); !ok {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
 		err := errors.New("invalid type")
 		handleError(err)
 		return err
@@ -133,12 +132,12 @@ func mutationRequired(metadata *metav1.ObjectMeta) bool {
 
 func (r *PodWebhook) mutatePod(pod *corev1.Pod) error {
 	var configVolume *corev1.Volume
-	if name, ok := pod.Annotations[annotationMackerelAgentConfigConfigMapName]; ok && name != "" {
+	if name, ok := pod.Annotations[annotationMackerelAgentConfigConfigMapNameKey]; ok && name != "" {
 		configVolume = createMackerelAgentConfigVolume(name)
 		pod.Spec.Volumes = append(pod.Spec.Volumes, *configVolume)
 
-		if path, ok := pod.Annotations[annotationEnvMackerelAgentConfig]; !ok || path == "" {
-			pod.Annotations[annotationEnvMackerelAgentConfig] = mackerelAgentConfigMountPath
+		if path, ok := pod.Annotations[annotationEnvMackerelAgentConfigKey]; !ok || path == "" {
+			pod.Annotations[annotationEnvMackerelAgentConfigKey] = mackerelAgentConfigMountPath
 		}
 	}
 
@@ -200,7 +199,7 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) (*corev1.Contain
 		},
 	}
 
-	if name, ok := pod.Annotations[annotationMackerelAPISecretName]; ok && name != "" {
+	if name, ok := pod.Annotations[annotationMackerelAPISecretNameKey]; ok && name != "" {
 		env = append(env, corev1.EnvVar{
 			Name: envMackerelAPIKey,
 			ValueFrom: &corev1.EnvVarSource{
@@ -245,7 +244,7 @@ func (r *PodWebhook) generateInjectedContainer(pod *corev1.Pod) (*corev1.Contain
 		})
 	}
 
-	if conf, ok := pod.Annotations[annotationEnvMackerelAgentConfig]; ok {
+	if conf, ok := pod.Annotations[annotationEnvMackerelAgentConfigKey]; ok {
 		env = append(env, corev1.EnvVar{
 			Name:  "MACKEREL_AGENT_CONFIG",
 			Value: conf,
