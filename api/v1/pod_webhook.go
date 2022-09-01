@@ -78,8 +78,7 @@ var _ admission.CustomDefaulter = &PodWebhook{}
 
 func NewPodWebHook() *PodWebhook {
 	p := new(PodWebhook)
-	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespaceSystem)
-	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespacePublic)
+	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespaceSystem, metav1.NamespacePublic)
 	return p
 }
 
