@@ -78,7 +78,7 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel into the specified Namespaces")
+	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel-container-agent into the Pod of the specified Namespaces.")
 
 	flag.Parse()
 	podWebHook.IgnoreNamespaces = append(podWebHook.IgnoreNamespaces, ignoreNamespaces...)
