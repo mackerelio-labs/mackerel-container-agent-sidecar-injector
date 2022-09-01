@@ -66,6 +66,7 @@ func main() {
 	var ignoreNamespaces ignoreNamespace
 
 	podWebHook := v1.NewPodWebHook()
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -75,6 +76,7 @@ func main() {
 	flag.IntVar(&podWebHook.AgentKubeletPort, "agentKubeletPort", -1, "Kubelet port")
 	flag.BoolVar(&podWebHook.AgentKubeletInsecureTLS, "agentKubeletInsecureTLS", true, "Skip verifying Kubelet host")
 	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel-container-agent into the Pod of the specified Namespaces.")
+
 	opts := zap.Options{
 		Development: true,
 	}
