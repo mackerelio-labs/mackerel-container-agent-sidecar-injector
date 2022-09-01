@@ -74,13 +74,14 @@ func main() {
 	flag.StringVar(&podWebHook.AgentAPIKey, "agentAPIKey", "", "Mackerel API Key for the injected agent")
 	flag.IntVar(&podWebHook.AgentKubeletPort, "agentKubeletPort", -1, "Kubelet port")
 	flag.BoolVar(&podWebHook.AgentKubeletInsecureTLS, "agentKubeletInsecureTLS", true, "Skip verifying Kubelet host")
+	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel-container-agent into the Pod of the specified Namespaces.")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel-container-agent into the Pod of the specified Namespaces.")
 
 	flag.Parse()
+
 	podWebHook.IgnoreNamespaces = append(podWebHook.IgnoreNamespaces, ignoreNamespaces...)
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
