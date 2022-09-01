@@ -71,9 +71,17 @@ type PodWebhook struct {
 	AgentAPIKey             string
 	AgentKubeletPort        int
 	AgentKubeletInsecureTLS bool
+	IgnoreNamespaces        []string
 }
 
 var _ admission.CustomDefaulter = &PodWebhook{}
+
+func NewPodWebHook() *PodWebhook {
+	p := new(PodWebhook)
+	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespaceSystem)
+	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespacePublic)
+	return p
+}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
