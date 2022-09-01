@@ -77,9 +77,12 @@ type PodWebhook struct {
 var _ admission.CustomDefaulter = &PodWebhook{}
 
 func NewPodWebHook() *PodWebhook {
-	p := new(PodWebhook)
-	p.IgnoreNamespaces = append(p.IgnoreNamespaces, metav1.NamespaceSystem, metav1.NamespacePublic)
-	return p
+	return &PodWebhook{
+		IgnoreNamespaces: []string{
+			metav1.NamespaceSystem,
+			metav1.NamespacePublic,
+		},
+	}
 }
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
