@@ -8,14 +8,15 @@ import (
 )
 
 func TestNewPodWebHook(t *testing.T) {
-
-	var ignoredNamespaces = []string{
-		metav1.NamespaceSystem,
-		metav1.NamespacePublic,
+	got := NewPodWebHook()
+	want := &PodWebhook{
+		IgnoreNamespaces: []string{
+			metav1.NamespaceSystem,
+			metav1.NamespacePublic,
+		},
 	}
-	podWebHook := NewPodWebHook()
 
-	if !reflect.DeepEqual(ignoredNamespaces, podWebHook.IgnoreNamespaces) {
-		t.Errorf("NewPodWebHook() = %v, want %v", podWebHook.IgnoreNamespaces, ignoredNamespaces)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NewPodWebHook() = %#v, want %#v", got, want)
 	}
 }
