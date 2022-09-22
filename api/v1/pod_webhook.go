@@ -97,7 +97,7 @@ func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 		return err
 	}
 
-	if !mutationRequired(&pod.ObjectMeta) {
+	if !r.mutationRequired(&pod.ObjectMeta) {
 		podlog.Info("no mutate needed", "name", pod.Name)
 		return nil
 	}
@@ -110,8 +110,8 @@ func (r *PodWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	return nil
 }
 
-func mutationRequired(metadata *metav1.ObjectMeta) bool {
-	for _, namespace := range ignoredNamespaces {
+func (r *PodWebhook) mutationRequired(metadata *metav1.ObjectMeta) bool {
+	for _, namespace := range r.IgnoreNamespaces {
 		if metadata.Namespace == namespace {
 			return false
 		}
