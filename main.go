@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -46,12 +47,26 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+//
+type ignoreNamespace []string
+
+func (i *ignoreNamespace) String() string {
+	return fmt.Sprintf("%v", *i)
+}
+
+func (i *ignoreNamespace) Set(v string) error {
+	*i = append(*i, v)
+	return nil
+}
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var ignoreNamespaces ignoreNamespace
 
-	podWebHook := &v1.PodWebhook{}
+	podWebHook := v1.NewPodWebHook()
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -60,11 +75,16 @@ func main() {
 	flag.StringVar(&podWebHook.AgentAPIKey, "agentAPIKey", "", "Mackerel API Key for the injected agent")
 	flag.IntVar(&podWebHook.AgentKubeletPort, "agentKubeletPort", -1, "Kubelet port")
 	flag.BoolVar(&podWebHook.AgentKubeletInsecureTLS, "agentKubeletInsecureTLS", true, "Skip verifying Kubelet host")
+	flag.Var(&ignoreNamespaces, "ignoreNamespace", "Do not inject mackerel-container-agent into the Pod of the specified Namespaces.")
+
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
+
 	flag.Parse()
+
+	podWebHook.IgnoreNamespaces = append(podWebHook.IgnoreNamespaces, ignoreNamespaces...)
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
