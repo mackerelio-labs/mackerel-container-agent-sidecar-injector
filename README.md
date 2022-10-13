@@ -127,3 +127,7 @@ data:
         nginx:
           command: "/usr/bin/mackerel-plugin-nginx"
 ```
+
+### Requirements
+
+- Kubernetes >= 1.24
